@@ -22,6 +22,11 @@ app.use(cors());
 
 dotenv.config();
 
+
+app.use(cors({
+  origin : "http://localhost:3000",
+}));
+
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(cookieParser());
@@ -32,9 +37,13 @@ const openai = new OpenAI({
 });
 
 // Define a route
-app.get("/", (req, res) => {
-  res.send("Hello Mehnaz Oshayer!");
-});
+// app.post("/", async (req, res) => {
+//   const {name} = req.body;
+//   //console.log("Hi  " + `${name}!`);
+//   res.send("Lala Lalal  " + `${name}!`);
+// });
+
+
 
 const storage = multer.diskStorage({
   destination: function (req, file, callback) {
@@ -47,21 +56,28 @@ const storage = multer.diskStorage({
   // Sets saved filename(s) to be original filename(s)
 });
 
-// Set saved storage options:
+// Initialize multer with storage configuration
+
+// // Set saved storage options:
 const upload = multer({ storage: storage });
+app.post("/transcribe", upload.single("audio"), async (req, res) => {
+  // Sets multer to intercept files named "audio" on uploaded form data
 
-app.post("/transcribe", upload.array("files"), async (req, res) => {
-  // Sets multer to intercept files named "files" on uploaded form data
+  let audio = req.file;
+  if (!audio) {
+    return res.status(400).json({ message: "No audio file uploaded" });
+  }
 
-  let audio = req.files[0];
   if (!audio.mimetype.includes("audio")) {
     fs.unlink(audio.path, (err) => {
       if (err) {
         console.error(err);
       }
     });
-    res.json({ message: "File(s) must be an audio" });
-  } else {
+    return res.status(400).json({ message: "File must be an audio file" });
+  }
+
+  try {
     const transcription = await openai.audio.transcriptions.create({
       file: fs.createReadStream(audio.path),
       model: "whisper-1",
@@ -70,15 +86,81 @@ app.post("/transcribe", upload.array("files"), async (req, res) => {
 
     let reply = transcription.text;
 
+    // Clean up: delete the uploaded file
     // fs.unlink(audio.path, (err) => {
     //   if (err) {
-    //     console.error(err)
+    //     console.error(err);
     //   }
-    // })
-    console.log(reply);
-    res.json({ message: "File(s) uploaded successfully", description: reply });
+    // });
+
+    //console.log(reply);
+    res.json({ message: "File uploaded successfully", description: reply });
+  } catch (error) {
+    console.error("Error processing transcription:", error);
+    res.status(500).json({ message: "Error processing transcription" });
   }
 });
+
+
+
+
+// const storage = multer.diskStorage({
+//   destination: function (req, file, callback) {
+//     callback(null, __dirname + '/uploads');
+//   },
+//   // Sets file(s) to be saved in uploads folder in same directory
+//   filename: function (req, file, callback) {
+//     callback(null, file.originalname);
+//   }
+//   // Sets saved filename(s) to be original filename(s)
+// })
+
+// // Set saved storage options:
+// const upload = multer({ storage: storage })
+
+
+// app.post("/transcribe", upload.array("files"), async (req, res) => {
+//   // Check if files were uploaded
+//   if (!req.files || req.files.length === 0) {
+//     return res.status(400).json({ message: "No files uploaded" });
+//   }
+
+//   // Process the uploaded files
+//   let audio = req.files[0];
+//   if (!(audio.mimetype.includes('audio'))) {
+//     fs.unlink(audio.path, (err) => {
+//       if (err) {
+//         console.error(err)
+//       }
+//     })
+//     return res.status(400).json({ message: "File(s) must be an audio" });
+//   }
+  
+//   // Proceed with transcription
+//   try {
+//     const transcription = await openai.audio.transcriptions.create({
+//       file: fs.createReadStream(audio.path),
+//       model: "whisper-1",
+//       response_format: "verbose_json",
+//     });
+
+//     let reply = transcription.text;
+
+//     // Clean up: delete the uploaded file
+//     fs.unlink(audio.path, (err) => {
+//       if (err) {
+//         console.error(err)
+//       }
+//     });
+
+//     console.log(reply);
+//     res.json({ message: "File(s) uploaded successfully", description: reply });
+//   } catch (error) {
+//     console.error("Error processing transcription:", error);
+//     res.status(500).json({ message: "Error processing transcription" });
+//   }
+// });
+
 
 app.post("/summary", async (req, res) => {
   const { conversation, summaryFormat } = req.body;
@@ -127,10 +209,10 @@ app.post("/summary", async (req, res) => {
     }
     //sentences = JSON.stringify(sentences);
 
-    console.log(sentences); // Get summary text from response
+    //console.log(sentences); // Get summary text from response
     res.json({ sentence: sentences });
   } catch (error) {
-    console.error("Error generating summary:", error);
+    //console.error("Error generating summary:", error);
     res.status(500).send("Error generating summary");
   }
 });
@@ -172,25 +254,42 @@ const genAI = new GoogleGenerativeAI(process.env.geminiai_api_key);
 
 app.get("/conversation", (req, res) => {
   exec("python conversation.py", (error, stdout, stderr) => {
-    if (error) {
-      console.error("Error:", error.message);
+    if (error || stderr) {
+      console.error("Error:", error || stderr);
       res.status(500).send("An error occurred during Python code execution.");
       return;
     }
 
-    if (stderr) {
-      console.error("Error:", stderr);
-      res.status(500).send("An error occurred during Python code execution.");
-      return;
-    }
+    // Split the stdout by lines
+    const lines = stdout.trim().split('\n');
 
-    //console.log('Python code output:', stdout);
-    console.log({conversation : stdout.replace(/\n/g)});
-    res.json({conversation : stdout.replace(/\n/g)});
+    // Define an array to store conversation data
+    const conversation = [];
+
+    // Regular expression to match speaker, message, and timestamp
+    const regex = /^(Speaker [A-Z]):\s*(.*):\s*([\d.]+)/;
+
+    // Loop through each line
+    lines.forEach(line => {
+      // Match line with the regex
+      const match = line.match(regex);
+
+      // If match is found, extract speaker, message, and timestamp
+      if (match && match.length === 4) {
+        const speaker = match[1];
+        const message = match[2].trim();
+        const timestamp = parseFloat(match[3]);
+
+        // Add message to conversation array
+        conversation.push({ speaker, message, timestamp });
+      }
+    });
+
+    // Send conversation data as JSON response
+    console.log({conversation});
+    res.json({ conversation });
   });
-  
 });
-
 
 
 // Start the server
