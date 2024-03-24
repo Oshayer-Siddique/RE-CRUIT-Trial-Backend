@@ -104,6 +104,23 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
 
 
 
+app.post("/upload", upload.single("file"), async (req, res) => {
+  // Middleware setup to handle single file uploads with the field name "audio"
+
+  try {
+    let audio = req.file; // Access the uploaded file details from the request object
+
+    // Do something with the uploaded file, such as saving it to a database or processing it
+
+    res.status(200).send({ message: "File Upload OK", file: audio }); // Send response indicating successful file upload along with file details
+  } catch (error) {
+    res.status(500).send({ message: "Error uploading file", error: error.message }); // Send error response if an error occurs during file upload
+  }
+});
+
+
+
+
 // const storage = multer.diskStorage({
 //   destination: function (req, file, callback) {
 //     callback(null, __dirname + '/uploads');
@@ -292,6 +309,74 @@ app.get("/conversation", (req, res) => {
 });
 
 
+
+
+app.get("/conversationfile", (req, res) => {
+  exec("python highlight.py", (error, stdout, stderr) => {
+    if (error || stderr) {
+      console.error("Error:", error || stderr);
+      res.status(500).send("An error occurred during Python code execution.");
+      return;
+    }
+
+    // Split the stdout by lines
+    const lines = stdout.trim().split('\n');
+
+    // Define an array to store conversation data
+    const conversation = [];
+
+    // Regular expression to match speaker, message, and timestamp
+    const regex = /^(Speaker [A-Z]):\s*(.*):\s*([\d.]+)/;
+
+    // Loop through each line
+    lines.forEach(line => {
+      // Match line with the regex
+      const match = line.match(regex);
+
+      // If match is found, extract speaker, message, and timestamp
+      if (match && match.length === 4) {
+        const speaker = match[1];
+        const message = match[2].trim();
+        const timestamp = parseFloat(match[3]);
+
+        // Add message to conversation array
+        conversation.push({ speaker, message, timestamp });
+      }
+    });
+
+    // Send conversation data as JSON response
+    //console.log({conversation});
+    res.json({ conversation });
+  });
+});
+
+
+
+app.post("/transcribefile", async (req, res) => {
+  try {
+    const audioFilePath = path.join(__dirname, 'uploads', 'uploaded_file.mp3');
+    console.log("Audio file path:", audioFilePath);
+
+    // Read the audio file
+    const audioData = fs.createReadStream(audioFilePath);
+    //console.log("Audio data:", audioData);
+
+    // Transcribe the audio file using OpenAI
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioData,
+      model: "whisper-1",
+      response_format: "verbose_json",
+    });
+    //console.log("Transcription:", transcription);
+
+    let reply = transcription.text;
+
+    res.json({ message: "Transcription completed", transcription: reply });
+  } catch (error) {
+    console.error("Error transcribing audio:", error);
+    res.status(500).json({ message: "Error transcribing audio" });
+  }
+});
 // Start the server
 app.listen(process.env.port, () => {
   console.log(`server listening on port ${process.env.port}`);
