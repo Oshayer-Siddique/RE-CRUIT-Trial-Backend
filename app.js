@@ -36,12 +36,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_GPT4,
 });
 
-// Define a route
-// app.post("/", async (req, res) => {
-//   const {name} = req.body;
-//   //console.log("Hi  " + `${name}!`);
-//   res.send("Lala Lalal  " + `${name}!`);
-// });
+//Define a route
+app.get("/", async (req, res) => {
+  
+  res.send("Hello Oshayer");
+});
 
 
 
