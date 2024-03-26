@@ -25,7 +25,7 @@ dotenv.config();
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://heartfelt-unicorn-615a55.netlify.app",
   })
 );
 
@@ -463,8 +463,7 @@ app.get("/conversation", async (req, res) => {
 
 });
 
-
 // Start the server
 app.listen(process.env.port, () => {
-  console.log(`server listening on port ${process.env.port}`);
+  console.log(`Server running at ${process.env.port}`);
 });
