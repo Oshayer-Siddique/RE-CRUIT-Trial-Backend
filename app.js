@@ -8,6 +8,7 @@ const { exec } = require("child_process");
 const axios = require("axios");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { SpeechClient } = require("@google-cloud/speech");
+const { AssemblyAI } = require("assemblyai");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
@@ -22,10 +23,11 @@ app.use(cors());
 
 dotenv.config();
 
-
-app.use(cors({
-  origin : "http://localhost:3000",
-}));
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+  })
+);
 
 app.use(bodyParser.json());
 app.use(express.json());
@@ -38,11 +40,8 @@ const openai = new OpenAI({
 
 //Define a route
 app.get("/", async (req, res) => {
-  
   res.send("Hello Oshayer");
 });
-
-
 
 const storage = multer.diskStorage({
   destination: function (req, file, callback) {
@@ -100,9 +99,6 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
   }
 });
 
-
-
-
 app.post("/upload", upload.single("file"), async (req, res) => {
   // Middleware setup to handle single file uploads with the field name "audio"
 
@@ -113,12 +109,11 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
     res.status(200).send({ message: "File Upload OK", file: audio }); // Send response indicating successful file upload along with file details
   } catch (error) {
-    res.status(500).send({ message: "Error uploading file", error: error.message }); // Send error response if an error occurs during file upload
+    res
+      .status(500)
+      .send({ message: "Error uploading file", error: error.message }); // Send error response if an error occurs during file upload
   }
 });
-
-
-
 
 // const storage = multer.diskStorage({
 //   destination: function (req, file, callback) {
@@ -133,7 +128,6 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
 // // Set saved storage options:
 // const upload = multer({ storage: storage })
-
 
 // app.post("/transcribe", upload.array("files"), async (req, res) => {
 //   // Check if files were uploaded
@@ -151,7 +145,7 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 //     })
 //     return res.status(400).json({ message: "File(s) must be an audio" });
 //   }
-  
+
 //   // Proceed with transcription
 //   try {
 //     const transcription = await openai.audio.transcriptions.create({
@@ -176,7 +170,6 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 //     res.status(500).json({ message: "Error processing transcription" });
 //   }
 // });
-
 
 app.post("/summary", async (req, res) => {
   const { conversation, summaryFormat } = req.body;
@@ -237,7 +230,6 @@ const genAI = new GoogleGenerativeAI(process.env.geminiai_api_key);
 
 // app.post('/conversation', async (req, res) => {
 
-
 //   try {
 //     // Retrieve the generative model
 //     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
@@ -266,94 +258,87 @@ const genAI = new GoogleGenerativeAI(process.env.geminiai_api_key);
 //   }
 // });
 
+// app.get("/conversation", (req, res) => {
+//   exec("python conversation.py", (error, stdout, stderr) => {
+//     if (error || stderr) {
+//       console.error("Error:", error || stderr);
+//       res.status(500).send("An error occurred during Python code execution.");
+//       return;
+//     }
 
+//     // Split the stdout by lines
+//     const lines = stdout.trim().split("\n");
 
-app.get("/conversation", (req, res) => {
-  exec("python conversation.py", (error, stdout, stderr) => {
-    if (error || stderr) {
-      console.error("Error:", error || stderr);
-      res.status(500).send("An error occurred during Python code execution.");
-      return;
-    }
+//     // Define an array to store conversation data
+//     const conversation = [];
 
-    // Split the stdout by lines
-    const lines = stdout.trim().split('\n');
+//     // Regular expression to match speaker, message, and timestamp
+//     const regex = /^(Speaker [A-Z]):\s*(.*):\s*([\d.]+)/;
 
-    // Define an array to store conversation data
-    const conversation = [];
+//     // Loop through each line
+//     lines.forEach((line) => {
+//       // Match line with the regex
+//       const match = line.match(regex);
 
-    // Regular expression to match speaker, message, and timestamp
-    const regex = /^(Speaker [A-Z]):\s*(.*):\s*([\d.]+)/;
+//       // If match is found, extract speaker, message, and timestamp
+//       if (match && match.length === 4) {
+//         const speaker = match[1];
+//         const message = match[2].trim();
+//         const timestamp = parseFloat(match[3]);
 
-    // Loop through each line
-    lines.forEach(line => {
-      // Match line with the regex
-      const match = line.match(regex);
+//         // Add message to conversation array
+//         conversation.push({ speaker, message, timestamp });
+//       }
+//     });
 
-      // If match is found, extract speaker, message, and timestamp
-      if (match && match.length === 4) {
-        const speaker = match[1];
-        const message = match[2].trim();
-        const timestamp = parseFloat(match[3]);
+//     // Send conversation data as JSON response
+//     console.log({ conversation });
+//     res.json({ conversation });
+//   });
+// });
 
-        // Add message to conversation array
-        conversation.push({ speaker, message, timestamp });
-      }
-    });
+// app.get("/conversationfile", (req, res) => {
+//   exec("python highlight.py", (error, stdout, stderr) => {
+//     if (error || stderr) {
+//       console.error("Error:", error || stderr);
+//       res.status(500).send("An error occurred during Python code execution.");
+//       return;
+//     }
 
-    // Send conversation data as JSON response
-    console.log({conversation});
-    res.json({ conversation });
-  });
-});
+//     // Split the stdout by lines
+//     const lines = stdout.trim().split("\n");
 
+//     // Define an array to store conversation data
+//     const conversation = [];
 
+//     // Regular expression to match speaker, message, and timestamp
+//     const regex = /^(Speaker [A-Z]):\s*(.*):\s*([\d.]+)/;
 
+//     // Loop through each line
+//     lines.forEach((line) => {
+//       // Match line with the regex
+//       const match = line.match(regex);
 
-app.get("/conversationfile", (req, res) => {
-  exec("python highlight.py", (error, stdout, stderr) => {
-    if (error || stderr) {
-      console.error("Error:", error || stderr);
-      res.status(500).send("An error occurred during Python code execution.");
-      return;
-    }
+//       // If match is found, extract speaker, message, and timestamp
+//       if (match && match.length === 4) {
+//         const speaker = match[1];
+//         const message = match[2].trim();
+//         const timestamp = parseFloat(match[3]);
 
-    // Split the stdout by lines
-    const lines = stdout.trim().split('\n');
+//         // Add message to conversation array
+//         conversation.push({ speaker, message, timestamp });
+//       }
+//     });
 
-    // Define an array to store conversation data
-    const conversation = [];
-
-    // Regular expression to match speaker, message, and timestamp
-    const regex = /^(Speaker [A-Z]):\s*(.*):\s*([\d.]+)/;
-
-    // Loop through each line
-    lines.forEach(line => {
-      // Match line with the regex
-      const match = line.match(regex);
-
-      // If match is found, extract speaker, message, and timestamp
-      if (match && match.length === 4) {
-        const speaker = match[1];
-        const message = match[2].trim();
-        const timestamp = parseFloat(match[3]);
-
-        // Add message to conversation array
-        conversation.push({ speaker, message, timestamp });
-      }
-    });
-
-    // Send conversation data as JSON response
-    //console.log({conversation});
-    res.json({ conversation });
-  });
-});
-
-
+//     // Send conversation data as JSON response
+//     //console.log({conversation});
+//     res.json({ conversation });
+//   });
+// });
 
 app.post("/transcribefile", async (req, res) => {
   try {
-    const audioFilePath = path.join(__dirname, 'uploads', 'uploaded_file.mp3');
+    const audioFilePath = path.join(__dirname, "uploads", "uploaded_file.mp3");
     console.log("Audio file path:", audioFilePath);
 
     // Read the audio file
@@ -376,6 +361,109 @@ app.post("/transcribefile", async (req, res) => {
     res.status(500).json({ message: "Error transcribing audio" });
   }
 });
+
+
+
+
+
+
+
+const FILE_URL1 =
+  "./uploads/uploaded_file.mp3";
+
+// You can also transcribe a local file by passing in a file path
+// const FILE_URL = './path/to/file.mp3';
+
+// Request parameters where speaker_labels has been enabled
+
+app.get("/conversationfile", async (req, res) => {
+  const client = new AssemblyAI({
+    apiKey: process.env.assembleai_api_key,
+  });
+
+  const data = {
+    audio_url: FILE_URL1,
+    speaker_labels: true,
+  };
+
+  const transcript = await client.transcripts.create(data);
+  //console.log(transcript.text);
+  // for (let utterance of transcript.utterances) {
+  //   console.log(`Speaker ${utterance.speaker}: ${utterance.text}`);
+  // }
+
+  const conversation = [];
+
+  // Loop through each utterance in the transcript
+  transcript.utterances.forEach((utterance) => {
+    const speaker = `Speaker ${utterance.speaker}`;
+    const message = utterance.text;
+    const timestamp = utterance.start/1000;
+
+    // Add message to conversation array
+    conversation.push({ speaker, message, timestamp });
+  });
+
+  // Construct JSON response
+  const jsonResponse = { conversation };
+
+  // Send conversation data as JSON response
+  res.json(jsonResponse);
+
+
+
+
+});
+
+
+const FILE_URL2 =
+  "./uploads/recorded_audio.wav";
+
+// You can also transcribe a local file by passing in a file path
+// const FILE_URL = './path/to/file.mp3';
+
+// Request parameters where speaker_labels has been enabled
+
+app.get("/conversation", async (req, res) => {
+  const client = new AssemblyAI({
+    apiKey: process.env.assembleai_api_key,
+  });
+
+  const data = {
+    audio_url: FILE_URL2,
+    speaker_labels: true,
+  };
+
+  const transcript = await client.transcripts.create(data);
+  //console.log(transcript.text);
+  // for (let utterance of transcript.utterances) {
+  //   console.log(`Speaker ${utterance.speaker}: ${utterance.text}`);
+  // }
+
+  const conversation = [];
+
+  // Loop through each utterance in the transcript
+  transcript.utterances.forEach((utterance) => {
+    const speaker = `Speaker ${utterance.speaker}`;
+    const message = utterance.text;
+    const timestamp = utterance.start/1000;
+
+    // Add message to conversation array
+    conversation.push({ speaker, message, timestamp });
+  });
+
+  // Construct JSON response
+  const jsonResponse = { conversation };
+
+  // Send conversation data as JSON response
+  res.json(jsonResponse);
+
+
+
+
+});
+
+
 // Start the server
 app.listen(process.env.port, () => {
   console.log(`server listening on port ${process.env.port}`);
