@@ -25,7 +25,7 @@ dotenv.config();
 
 app.use(
   cors({
-    origin: "https://heartfelt-unicorn-615a55.netlify.app",
+    origin: "http://localhost:3000",
   })
 );
 
