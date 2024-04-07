@@ -25,7 +25,7 @@ dotenv.config();
 
 app.use(
   cors({
-    origin: "https://cozy-starship-a87900.netlify.app",
+    origin: "http://localhost:3000",
   })
 );
 
