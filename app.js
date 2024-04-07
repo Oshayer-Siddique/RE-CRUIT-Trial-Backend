@@ -25,7 +25,7 @@ dotenv.config();
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://harmonious-moxie-453e94.netlify.app",
   })
 );
 
