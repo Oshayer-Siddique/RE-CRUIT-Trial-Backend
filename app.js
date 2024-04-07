@@ -39,8 +39,10 @@ const openai = new OpenAI({
 });
 
 //Define a route
-app.get("/", async (req, res) => {
-  res.send("Hello Oshayer");
+app.post("/", async (req, res) => {
+  const {name} = req.body;
+  res.send("Oshayer " + `${name}`);
+
 });
 
 const storage = multer.diskStorage({
@@ -462,6 +464,100 @@ app.get("/conversation", async (req, res) => {
 
 
 });
+
+
+// app.post("/customsummary", async (req, res) => {
+//   const { conversation, prompt } = req.body; // Extract conversation and prompt from request body
+
+//   try {
+//     // Generate summary using GPT-4 model
+//     const response = await openai.chat.completions.create({
+//       model: "gpt-4-vision-preview",
+//       max_tokens: 100,
+//       temperature: 0.5, // randomness
+//       top_p: 1, // Adjust top_p as needed
+//       frequency_penalty: 0,
+//       presence_penalty: 0,
+
+//       messages: [
+//         {
+//           role: "user",
+//           content: [{ type: "text", text: prompt }], // Use the provided prompt
+//         },
+//       ],
+//     });
+
+//     const summary = response.choices[0].message;
+//     let sentences = summary.content.split(". ");
+
+//     // Extract sections based on the prompt
+//     const requestedSections = prompt.match(/\b(?:Notes|Decisions|Predictions|Sentiment Analysis)\b/g);
+
+//     // Filter sentences based on requested sections
+//     let customizedSummary = "";
+//     if (requestedSections) {
+//       requestedSections.forEach(section => {
+//         const sectionSentences = sentences.filter(sentence => sentence.includes(section + ":"));
+//         if (sectionSentences.length > 0) {
+//           customizedSummary += `**${section}:**\n${sectionSentences.join(". ")}\n\n`;
+//         }
+//       });
+//     } else {
+//       // If no specific sections requested, return the entire summary
+//       customizedSummary = sentences.join("\n");
+//     }
+
+//     res.json({ summary: customizedSummary }); // Send the customized summary in the response
+//   } catch (error) {
+//     console.error("Error generating summary:", error);
+//     res.status(500).send("Error generating summary");
+//   }
+// });
+
+
+app.post("/customsummary", async (req, res) => {
+  const { conversation,command } = req.body;
+
+  // Construct the prompt
+  const prompt = `${command} of this :\n\n${conversation} and highlight keypoints and decisions`;
+
+  try {
+    // Generate summary using GPT-4 model
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-vision-preview",
+      max_tokens: 80,
+      temperature: 0.5, // randomness
+      top_p: 1, // Adjust top_p as needed
+      frequency_penalty: 0,
+      presence_penalty: 0,
+
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "text", text: prompt }],
+        },
+      ],
+    });
+
+    const summary = response.choices[0].message;
+    let sentences = summary.content.split(". ");
+    //console.log(sentences);
+
+    res.json({ sentence: sentences.join("\n") }); // Send the summary in the response without any formatting
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    res.status(500).send("Error generating summary");
+  }
+});
+
+
+
+
+
+
+
+
+
 
 // Start the server
 app.listen(process.env.port, () => {
